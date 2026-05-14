@@ -26,7 +26,7 @@ class EntryRow(ctk.CTkFrame):
 
         try:
             d = datetime.strptime(entry["date"], "%Y-%m-%d")
-            date_str = d.strftime("%b %-d")
+            date_str = d.strftime("%b") + " " + str(d.day)
         except ValueError:
             date_str = entry["date"]
 
@@ -249,7 +249,7 @@ class WorklogApp(ctk.CTk):
 
         try:
             d = datetime.strptime(entry["date"], "%Y-%m-%d")
-            date_display = d.strftime("%B %-d, %Y")
+            date_display = d.strftime("%B") + f" {d.day}, " + str(d.year)
         except ValueError:
             date_display = entry["date"]
         self._d_date.configure(text=date_display)

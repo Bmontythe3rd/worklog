@@ -43,9 +43,13 @@ class EntryForm(ctk.CTkToplevel):
         proj_col = ctk.CTkFrame(row, fg_color="transparent")
         proj_col.grid(row=0, column=0, sticky="ew", padx=(0, 8))
         ctk.CTkLabel(proj_col, text="Project", font=ctk.CTkFont(size=12, weight="bold"), anchor="w").pack(fill="x")
-        projects = [""] + database.get_projects()
+        self._projects = [""] + database.get_projects()
         self.project_var = ctk.StringVar()
-        self.project_combo = ctk.CTkComboBox(proj_col, variable=self.project_var, values=projects, height=36)
+        self.project_combo = ctk.CTkComboBox(
+            proj_col, variable=self.project_var,
+            values=self._projects + ["+ New project..."],
+            height=36, command=self._on_project_select,
+        )
         self.project_combo.pack(fill="x", pady=(3, 0))
 
         cat_col = ctk.CTkFrame(row, fg_color="transparent")
@@ -72,6 +76,20 @@ class EntryForm(ctk.CTkToplevel):
         ctk.CTkButton(btn_row, text="Cancel", fg_color="transparent", border_width=2, width=100, height=36, command=self.destroy).pack(side="right", padx=(8, 0))
         label = "Save Changes" if self.entry else "Add Entry"
         ctk.CTkButton(btn_row, text=label, width=120, height=36, command=self._save).pack(side="right")
+
+    def _on_project_select(self, value):
+        if value != "+ New project...":
+            return
+        dialog = ctk.CTkInputDialog(text="Enter project name:", title="New Project")
+        name = dialog.get_input()
+        if name and name.strip():
+            name = name.strip()
+            if name not in self._projects:
+                self._projects.append(name)
+                self.project_combo.configure(values=self._projects + ["+ New project..."])
+            self.project_var.set(name)
+        else:
+            self.project_var.set("")
 
     def _populate(self, entry):
         self.date_var.set(entry["date"])

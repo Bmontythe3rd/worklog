@@ -7,11 +7,21 @@ from pathlib import Path
 # the script is invoked from any directory.
 sys.path.insert(0, str(Path(__file__).parent))
 
+import customtkinter as ctk
 import database
 from ui.app import WorklogApp
 
 
+def _apply_hidpi_scaling():
+    scale = float(os.environ.get("GDK_SCALE", 1))
+    if scale > 1:
+        ctk.set_widget_scaling(scale)
+        ctk.set_window_scaling(scale)
+
+
 def main():
+    _apply_hidpi_scaling()
+
     if not os.environ.get("ANTHROPIC_API_KEY"):
         print(
             "Warning: ANTHROPIC_API_KEY is not set.\n"

@@ -14,7 +14,7 @@ class SummaryDialog(ctk.CTkToplevel):
 
         title = "Annual Review Generator" if mode == "annual" else "Period Summary"
         self.title(title)
-        self.geometry("820x680")
+        self.geometry("860x700")
         self.transient(parent)
         self.grab_set()
 
@@ -52,7 +52,7 @@ class SummaryDialog(ctk.CTkToplevel):
         self._status.pack(fill="x", pady=(0, 5))
 
         # Output text area
-        self._output = ctk.CTkTextbox(outer, wrap="word", font=ctk.CTkFont(size=13))
+        self._output = ctk.CTkTextbox(outer, wrap="word", font=ctk.CTkFont(size=14))
         self._output.pack(fill="both", expand=True, pady=(0, 12))
         self._output.configure(state="disabled")
 

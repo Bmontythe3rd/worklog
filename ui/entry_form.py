@@ -8,7 +8,7 @@ class EntryForm(ctk.CTkToplevel):
         super().__init__(parent)
         self.entry = entry
         self.title(title)
-        self.geometry("560x560")
+        self.geometry("580x610")
         self.resizable(False, False)
         self.transient(parent)
         self.grab_set()
@@ -23,52 +23,53 @@ class EntryForm(ctk.CTkToplevel):
 
     def _build_ui(self):
         outer = ctk.CTkFrame(self, fg_color="transparent")
-        outer.pack(fill="both", expand=True, padx=25, pady=20)
+        outer.pack(fill="both", expand=True, padx=30, pady=24)
 
-        ctk.CTkLabel(outer, text="Date", font=ctk.CTkFont(weight="bold"), anchor="w").pack(fill="x")
+        ctk.CTkLabel(outer, text="Date", font=ctk.CTkFont(size=12, weight="bold"), anchor="w").pack(fill="x")
         self.date_var = ctk.StringVar()
-        ctk.CTkEntry(outer, textvariable=self.date_var, placeholder_text="YYYY-MM-DD").pack(fill="x", pady=(3, 12))
+        ctk.CTkEntry(outer, textvariable=self.date_var, placeholder_text="YYYY-MM-DD", height=36).pack(fill="x", pady=(3, 14))
 
-        ctk.CTkLabel(outer, text="Title *", font=ctk.CTkFont(weight="bold"), anchor="w").pack(fill="x")
-        self.title_entry = ctk.CTkEntry(outer, placeholder_text="What did you work on?")
-        self.title_entry.pack(fill="x", pady=(3, 12))
+        ctk.CTkLabel(outer, text="Title *", font=ctk.CTkFont(size=12, weight="bold"), anchor="w").pack(fill="x")
+        self.title_entry = ctk.CTkEntry(outer, placeholder_text="What did you work on?", height=36)
+        self.title_entry.pack(fill="x", pady=(3, 14))
 
         row = ctk.CTkFrame(outer, fg_color="transparent")
-        row.pack(fill="x", pady=(0, 12))
+        row.pack(fill="x", pady=(0, 14))
         row.columnconfigure(0, weight=1)
         row.columnconfigure(1, weight=1)
 
         proj_col = ctk.CTkFrame(row, fg_color="transparent")
         proj_col.grid(row=0, column=0, sticky="ew", padx=(0, 8))
-        ctk.CTkLabel(proj_col, text="Project", font=ctk.CTkFont(weight="bold"), anchor="w").pack(fill="x")
+        ctk.CTkLabel(proj_col, text="Project", font=ctk.CTkFont(size=12, weight="bold"), anchor="w").pack(fill="x")
         projects = [""] + database.get_projects()
         self.project_var = ctk.StringVar()
-        self.project_combo = ctk.CTkComboBox(proj_col, variable=self.project_var, values=projects)
+        self.project_combo = ctk.CTkComboBox(proj_col, variable=self.project_var, values=projects, height=36)
         self.project_combo.pack(fill="x", pady=(3, 0))
 
         cat_col = ctk.CTkFrame(row, fg_color="transparent")
         cat_col.grid(row=0, column=1, sticky="ew")
-        ctk.CTkLabel(cat_col, text="Category", font=ctk.CTkFont(weight="bold"), anchor="w").pack(fill="x")
+        ctk.CTkLabel(cat_col, text="Category", font=ctk.CTkFont(size=12, weight="bold"), anchor="w").pack(fill="x")
         self.category_var = ctk.StringVar()
         self.category_combo = ctk.CTkComboBox(
             cat_col,
             variable=self.category_var,
             values=[""] + database.PRESET_CATEGORIES,
+            height=36,
         )
         self.category_combo.pack(fill="x", pady=(3, 0))
 
-        ctk.CTkLabel(outer, text="Notes", font=ctk.CTkFont(weight="bold"), anchor="w").pack(fill="x")
-        self.desc_text = ctk.CTkTextbox(outer, height=160, wrap="word")
-        self.desc_text.pack(fill="both", expand=True, pady=(3, 15))
+        ctk.CTkLabel(outer, text="Notes", font=ctk.CTkFont(size=12, weight="bold"), anchor="w").pack(fill="x")
+        self.desc_text = ctk.CTkTextbox(outer, height=180, wrap="word", font=ctk.CTkFont(size=13))
+        self.desc_text.pack(fill="both", expand=True, pady=(3, 14))
 
-        self.error_label = ctk.CTkLabel(outer, text="", text_color="#e74c3c", anchor="w")
+        self.error_label = ctk.CTkLabel(outer, text="", text_color="#e74c3c", anchor="w", font=ctk.CTkFont(size=12))
         self.error_label.pack(fill="x")
 
         btn_row = ctk.CTkFrame(outer, fg_color="transparent")
-        btn_row.pack(fill="x", pady=(5, 0))
-        ctk.CTkButton(btn_row, text="Cancel", fg_color="transparent", border_width=2, width=100, command=self.destroy).pack(side="right", padx=(8, 0))
+        btn_row.pack(fill="x", pady=(6, 0))
+        ctk.CTkButton(btn_row, text="Cancel", fg_color="transparent", border_width=2, width=100, height=36, command=self.destroy).pack(side="right", padx=(8, 0))
         label = "Save Changes" if self.entry else "Add Entry"
-        ctk.CTkButton(btn_row, text=label, width=120, command=self._save).pack(side="right")
+        ctk.CTkButton(btn_row, text=label, width=120, height=36, command=self._save).pack(side="right")
 
     def _populate(self, entry):
         self.date_var.set(entry["date"])

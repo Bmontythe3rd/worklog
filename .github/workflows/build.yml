@@ -1,0 +1,79 @@
+name: Build
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact: worklog-linux.tar.gz
+          - os: windows-latest
+            artifact: worklog-windows.zip
+          - os: macos-latest
+            artifact: worklog-macos.zip
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Linux system dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get install -y python3-tk
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt pyinstaller
+
+      - name: Build
+        run: pyinstaller worklog.spec
+
+      - name: Package (Linux)
+        if: runner.os == 'Linux'
+        run: tar -czf worklog-linux.tar.gz -C dist Worklog
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Compress-Archive -Path dist\Worklog -DestinationPath worklog-windows.zip
+
+      - name: Package (macOS)
+        if: runner.os == 'macOS'
+        run: zip -r worklog-macos.zip dist/Worklog.app
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.artifact }}
+
+  release:
+    name: Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            worklog-linux.tar.gz
+            worklog-windows.zip
+            worklog-macos.zip

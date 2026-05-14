@@ -13,7 +13,19 @@ A desktop worklog app with AI-powered summaries and end-of-year self-review gene
 - **Streaming AI output** — responses appear in real time as Claude writes them
 - **Local SQLite storage** — all data stays on your machine at `~/.worklog/worklog.db`
 
-## Setup
+## Download
+
+Pre-built binaries are available on the [Releases](https://github.com/Bmontythe3rd/worklog/releases) page — no Python required.
+
+| Platform | Download | Notes |
+|----------|----------|-------|
+| macOS | `worklog-macos.zip` | Extract and drag `Worklog.app` to Applications. First launch: right-click → Open (bypasses Gatekeeper for unsigned apps) |
+| Windows | `worklog-windows.zip` | Extract the folder and run `Worklog.exe` |
+| Linux | `worklog-linux.tar.gz` | Extract and run `./Worklog/Worklog` |
+
+Then set your API key (see [Get an Anthropic API key](#2-get-an-anthropic-api-key) below) before launching.
+
+## Setup (from source)
 
 ### 1. Install dependencies
 

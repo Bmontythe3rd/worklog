@@ -1,8 +1,10 @@
 from tkinter import messagebox
+import os
 import customtkinter as ctk
-from datetime import datetime
+from datetime import datetime, date
 import database
-from ui import entry_form, summary_dialog, settings_dialog
+import config
+from ui import summary_dialog
 
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
@@ -66,12 +68,16 @@ class WorklogApp(ctk.CTk):
 
         self._selected_id = None
         self._rows: list[tuple[int, EntryRow]] = []
+        self._form_entry = None        # None = new entry, sqlite Row = edit
+        self._form_projects: list[str] = []
+        self._current_panel = None     # which right-panel frame is visible
+        self._prev_panel = None        # where to return on cancel
 
         self._build_ui()
         database.init_db()
         self._load_entries()
 
-    # ── UI construction ─────────────────────────────────────────────────────
+    # ── UI construction ──────────────────────────────────────────────────────
 
     def _build_ui(self):
         self._build_topbar()
@@ -109,7 +115,6 @@ class WorklogApp(ctk.CTk):
             text_color=("gray50", "gray50"), anchor="w",
         ).pack(fill="x", pady=(0, 8))
 
-        # From / To date range side by side
         date_row = ctk.CTkFrame(f, fg_color="transparent")
         date_row.pack(fill="x", pady=(0, 8))
         date_row.columnconfigure(0, weight=1)
@@ -127,7 +132,6 @@ class WorklogApp(ctk.CTk):
         self._f_to = ctk.CTkEntry(to_col, placeholder_text="YYYY-MM-DD")
         self._f_to.pack(fill="x", pady=(2, 0))
 
-        # Project filter
         ctk.CTkLabel(f, text="Project", font=ctk.CTkFont(size=11), text_color=("gray45", "gray55"), anchor="w").pack(fill="x")
         self._f_project = ctk.CTkComboBox(f, values=["All"], command=self._load_entries)
         self._f_project.set("All")
@@ -150,7 +154,7 @@ class WorklogApp(ctk.CTk):
         panel = ctk.CTkFrame(parent, corner_radius=0, fg_color="transparent")
         panel.pack(side="left", fill="both", expand=True)
 
-        # Placeholder
+        # ── Placeholder ──────────────────────────────────────────────────────
         self._placeholder = ctk.CTkFrame(panel, fg_color="transparent")
         self._placeholder.pack(fill="both", expand=True)
         ctk.CTkLabel(
@@ -160,10 +164,21 @@ class WorklogApp(ctk.CTk):
             font=ctk.CTkFont(size=15),
             justify="center",
         ).pack(expand=True)
+        self._current_panel = self._placeholder
 
-        # Detail view
+        # ── Detail view ──────────────────────────────────────────────────────
         self._detail = ctk.CTkFrame(panel, fg_color="transparent")
+        self._build_detail_content()
 
+        # ── Entry form ───────────────────────────────────────────────────────
+        self._form_panel = ctk.CTkFrame(panel, fg_color="transparent")
+        self._build_form_content()
+
+        # ── Settings ─────────────────────────────────────────────────────────
+        self._settings_panel = ctk.CTkFrame(panel, fg_color="transparent")
+        self._build_settings_content()
+
+    def _build_detail_content(self):
         hdr = ctk.CTkFrame(self._detail, fg_color="transparent")
         hdr.pack(fill="x", padx=36, pady=(28, 0))
 
@@ -201,6 +216,109 @@ class WorklogApp(ctk.CTk):
             command=self._delete_entry,
         ).pack(side="left", padx=10)
 
+    def _build_form_content(self):
+        outer = ctk.CTkFrame(self._form_panel, fg_color="transparent")
+        outer.pack(fill="both", expand=True, padx=36, pady=28)
+
+        self._form_header = ctk.CTkLabel(outer, text="New Entry", font=ctk.CTkFont(size=22, weight="bold"), anchor="w")
+        self._form_header.pack(fill="x", pady=(0, 24))
+
+        ctk.CTkLabel(outer, text="Date", font=ctk.CTkFont(size=12, weight="bold"), anchor="w").pack(fill="x")
+        self._form_date_var = ctk.StringVar()
+        ctk.CTkEntry(outer, textvariable=self._form_date_var, placeholder_text="YYYY-MM-DD", height=36).pack(fill="x", pady=(3, 14))
+
+        ctk.CTkLabel(outer, text="Title *", font=ctk.CTkFont(size=12, weight="bold"), anchor="w").pack(fill="x")
+        self._form_title = ctk.CTkEntry(outer, placeholder_text="What did you work on?", height=36)
+        self._form_title.pack(fill="x", pady=(3, 14))
+
+        combo_row = ctk.CTkFrame(outer, fg_color="transparent")
+        combo_row.pack(fill="x", pady=(0, 14))
+        combo_row.columnconfigure(0, weight=1)
+        combo_row.columnconfigure(1, weight=1)
+
+        proj_col = ctk.CTkFrame(combo_row, fg_color="transparent")
+        proj_col.grid(row=0, column=0, sticky="ew", padx=(0, 8))
+        ctk.CTkLabel(proj_col, text="Project", font=ctk.CTkFont(size=12, weight="bold"), anchor="w").pack(fill="x")
+        self._form_project_var = ctk.StringVar()
+        self._form_project_combo = ctk.CTkComboBox(
+            proj_col, variable=self._form_project_var,
+            values=[""], height=36, command=self._on_form_project_select,
+        )
+        self._form_project_combo.pack(fill="x", pady=(3, 0))
+
+        cat_col = ctk.CTkFrame(combo_row, fg_color="transparent")
+        cat_col.grid(row=0, column=1, sticky="ew")
+        ctk.CTkLabel(cat_col, text="Category", font=ctk.CTkFont(size=12, weight="bold"), anchor="w").pack(fill="x")
+        self._form_category_var = ctk.StringVar()
+        ctk.CTkComboBox(
+            cat_col, variable=self._form_category_var,
+            values=[""] + database.PRESET_CATEGORIES,
+            height=36,
+        ).pack(fill="x", pady=(3, 0))
+
+        ctk.CTkLabel(outer, text="Notes", font=ctk.CTkFont(size=12, weight="bold"), anchor="w").pack(fill="x")
+        self._form_notes = ctk.CTkTextbox(outer, wrap="word", font=ctk.CTkFont(size=13))
+        self._form_notes.pack(fill="both", expand=True, pady=(3, 14))
+
+        self._form_error = ctk.CTkLabel(outer, text="", text_color="#e74c3c", anchor="w", font=ctk.CTkFont(size=12))
+        self._form_error.pack(fill="x")
+
+        btn_row = ctk.CTkFrame(outer, fg_color="transparent")
+        btn_row.pack(fill="x", pady=(6, 0))
+        ctk.CTkButton(btn_row, text="Cancel", fg_color="transparent", border_width=2, width=100, height=36, command=self._form_cancel).pack(side="right", padx=(8, 0))
+        self._form_save_btn = ctk.CTkButton(btn_row, text="Add Entry", width=120, height=36, command=self._form_save)
+        self._form_save_btn.pack(side="right")
+
+    def _build_settings_content(self):
+        outer = ctk.CTkFrame(self._settings_panel, fg_color="transparent")
+        outer.pack(fill="both", expand=True, padx=36, pady=28)
+
+        ctk.CTkLabel(outer, text="Settings", font=ctk.CTkFont(size=22, weight="bold"), anchor="w").pack(fill="x", pady=(0, 24))
+
+        ctk.CTkLabel(outer, text="AI Integration", font=ctk.CTkFont(size=13, weight="bold"), anchor="w").pack(fill="x")
+        ctk.CTkFrame(outer, height=1, fg_color=("gray75", "gray30")).pack(fill="x", pady=(4, 16))
+
+        ctk.CTkLabel(outer, text="Anthropic API Key", font=ctk.CTkFont(size=12, weight="bold"), anchor="w").pack(fill="x")
+
+        key_row = ctk.CTkFrame(outer, fg_color="transparent")
+        key_row.pack(fill="x", pady=(4, 4))
+
+        self._s_key_var = ctk.StringVar(value=config.get_api_key() or "")
+        self._s_key_entry = ctk.CTkEntry(
+            key_row, textvariable=self._s_key_var,
+            show="•", height=36, placeholder_text="sk-ant-...",
+        )
+        self._s_key_entry.pack(side="left", fill="x", expand=True)
+
+        self._s_show_btn = ctk.CTkButton(
+            key_row, text="Show", width=64, height=36,
+            fg_color="transparent", border_width=1,
+            command=self._settings_toggle_show,
+        )
+        self._s_show_btn.pack(side="left", padx=(8, 0))
+
+        ctk.CTkLabel(
+            outer, text="Get your key at console.anthropic.com",
+            font=ctk.CTkFont(size=11), text_color=("gray50", "gray55"), anchor="w",
+        ).pack(fill="x", pady=(0, 16))
+
+        self._s_status = ctk.CTkLabel(outer, text="", anchor="w", font=ctk.CTkFont(size=12))
+        self._s_status.pack(fill="x")
+        self._settings_refresh_status()
+
+        btn_row = ctk.CTkFrame(outer, fg_color="transparent")
+        btn_row.pack(fill="x", pady=(16, 0))
+        ctk.CTkButton(btn_row, text="Cancel", fg_color="transparent", border_width=2, width=100, height=36, command=self._settings_cancel).pack(side="right", padx=(8, 0))
+        ctk.CTkButton(btn_row, text="Save", width=100, height=36, command=self._settings_save).pack(side="right")
+
+    # ── Panel management ─────────────────────────────────────────────────────
+
+    def _show_panel(self, panel):
+        for p in (self._placeholder, self._detail, self._form_panel, self._settings_panel):
+            p.pack_forget()
+        panel.pack(fill="both", expand=True)
+        self._current_panel = panel
+
     # ── Entry list ───────────────────────────────────────────────────────────
 
     def _load_entries(self, *_):
@@ -230,8 +348,7 @@ class WorklogApp(ctk.CTk):
 
         if self._selected_id and not any(eid == self._selected_id for eid, _ in self._rows):
             self._selected_id = None
-            self._detail.pack_forget()
-            self._placeholder.pack(fill="both", expand=True)
+            self._show_panel(self._placeholder)
 
     def _select_entry(self, entry_id: int):
         self._selected_id = entry_id
@@ -243,8 +360,7 @@ class WorklogApp(ctk.CTk):
         if not entry:
             return
 
-        self._placeholder.pack_forget()
-        self._detail.pack(fill="both", expand=True)
+        self._show_panel(self._detail)
 
         self._d_title.configure(text=entry["title"])
 
@@ -263,22 +379,23 @@ class WorklogApp(ctk.CTk):
         self._d_desc.insert("1.0", entry["description"] or "")
         self._d_desc.configure(state="disabled")
 
-    # ── Actions ──────────────────────────────────────────────────────────────
+    # ── Top-level actions ────────────────────────────────────────────────────
 
     def _new_entry(self):
-        dlg = entry_form.EntryForm(self, title="New Entry")
-        self.wait_window(dlg)
-        self._load_entries()
+        self._prev_panel = self._current_panel
+        self._form_entry = None
+        self._form_reset()
+        self._show_panel(self._form_panel)
+        self.after(50, self._form_title.focus_set)
 
     def _edit_entry(self):
         if not self._selected_id:
             return
-        entry = database.get_entry(self._selected_id)
-        dlg = entry_form.EntryForm(self, title="Edit Entry", entry=entry)
-        self.wait_window(dlg)
-        self._load_entries()
-        if self._selected_id:
-            self._select_entry(self._selected_id)
+        self._prev_panel = self._current_panel
+        self._form_entry = database.get_entry(self._selected_id)
+        self._form_reset(entry=self._form_entry)
+        self._show_panel(self._form_panel)
+        self.after(50, self._form_title.focus_set)
 
     def _delete_entry(self):
         if not self._selected_id:
@@ -286,8 +403,7 @@ class WorklogApp(ctk.CTk):
         if messagebox.askyesno("Delete Entry", "Delete this entry? This cannot be undone.", parent=self):
             database.delete_entry(self._selected_id)
             self._selected_id = None
-            self._detail.pack_forget()
-            self._placeholder.pack(fill="both", expand=True)
+            self._show_panel(self._placeholder)
             self._load_entries()
 
     def _summarize_period(self):
@@ -305,11 +421,111 @@ class WorklogApp(ctk.CTk):
         self.wait_window(dlg)
 
     def _open_settings(self):
-        dlg = settings_dialog.SettingsDialog(self)
-        self.wait_window(dlg)
+        self._prev_panel = self._current_panel
+        self._s_key_var.set(config.get_api_key() or "")
+        self._settings_refresh_status()
+        self._show_panel(self._settings_panel)
 
     def _clear_filter(self):
         self._f_from.delete(0, "end")
         self._f_to.delete(0, "end")
         self._f_project.set("All")
         self._load_entries()
+
+    # ── Form methods ─────────────────────────────────────────────────────────
+
+    def _form_reset(self, entry=None):
+        self._form_date_var.set(entry["date"] if entry else date.today().strftime("%Y-%m-%d"))
+
+        self._form_title.delete(0, "end")
+        if entry:
+            self._form_title.insert(0, entry["title"] or "")
+
+        self._form_projects = [""] + database.get_projects()
+        self._form_project_combo.configure(values=self._form_projects + ["+ New project..."])
+        self._form_project_var.set(entry["project"] or "" if entry else "")
+        self._form_category_var.set(entry["category"] or "" if entry else "")
+
+        self._form_notes.delete("1.0", "end")
+        if entry and entry["description"]:
+            self._form_notes.insert("1.0", entry["description"])
+
+        self._form_error.configure(text="")
+
+        if entry:
+            self._form_header.configure(text="Edit Entry")
+            self._form_save_btn.configure(text="Save Changes")
+        else:
+            self._form_header.configure(text="New Entry")
+            self._form_save_btn.configure(text="Add Entry")
+
+    def _on_form_project_select(self, value):
+        if value != "+ New project...":
+            return
+        dialog = ctk.CTkInputDialog(text="Enter project name:", title="New Project")
+        name = dialog.get_input()
+        if name and name.strip():
+            name = name.strip()
+            if name not in self._form_projects:
+                self._form_projects.append(name)
+                self._form_project_combo.configure(values=self._form_projects + ["+ New project..."])
+            self._form_project_var.set(name)
+        else:
+            self._form_project_var.set("")
+
+    def _form_cancel(self):
+        self._show_panel(self._prev_panel or self._placeholder)
+
+    def _form_save(self):
+        date_val = self._form_date_var.get().strip()
+        title_val = self._form_title.get().strip()
+
+        if not title_val:
+            self._form_error.configure(text="Title is required.")
+            return
+        if not date_val:
+            self._form_error.configure(text="Date is required.")
+            return
+
+        desc = self._form_notes.get("1.0", "end").strip()
+        project = self._form_project_var.get().strip()
+        category = self._form_category_var.get().strip()
+
+        if self._form_entry:
+            database.update_entry(self._form_entry["id"], date_val, title_val, desc, project, category)
+            saved_id = self._form_entry["id"]
+        else:
+            saved_id = database.create_entry(date_val, title_val, desc, project, category)
+
+        self._load_entries()
+        self._select_entry(saved_id)
+
+    # ── Settings methods ─────────────────────────────────────────────────────
+
+    def _settings_toggle_show(self):
+        if self._s_key_entry.cget("show") == "•":
+            self._s_key_entry.configure(show="")
+            self._s_show_btn.configure(text="Hide")
+        else:
+            self._s_key_entry.configure(show="•")
+            self._s_show_btn.configure(text="Show")
+
+    def _settings_refresh_status(self):
+        stored = config.get_api_key()
+        env = os.environ.get("ANTHROPIC_API_KEY", "")
+        if stored or env:
+            self._s_status.configure(text="✓ API key is configured", text_color="#4caf50")
+        else:
+            self._s_status.configure(text="No API key set — AI features will not work", text_color="#e57373")
+
+    def _settings_save(self):
+        key = self._s_key_var.get().strip()
+        config.set_api_key(key)
+        if key:
+            os.environ["ANTHROPIC_API_KEY"] = key
+        elif "ANTHROPIC_API_KEY" in os.environ:
+            del os.environ["ANTHROPIC_API_KEY"]
+        self._s_status.configure(text="✓ Saved", text_color="#4caf50")
+
+    def _settings_cancel(self):
+        self._show_panel(self._prev_panel or self._placeholder)

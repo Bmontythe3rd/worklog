@@ -82,8 +82,7 @@ worklog/
 ├── database.py          # SQLite layer (~/.worklog/worklog.db)
 ├── ai_summary.py        # Claude API integration (streaming)
 ├── ui/
-│   ├── app.py           # Main window
-│   ├── entry_form.py    # Add/edit entry dialog
+│   ├── app.py           # Main window, entry form, and settings (all inline)
 │   └── summary_dialog.py  # AI summary window
 └── requirements.txt
 ```

@@ -6,21 +6,21 @@ import database
 class EntryForm(ctk.CTkToplevel):
     def __init__(self, parent, title="New Entry", entry=None):
         super().__init__(parent)
+        self.withdraw()
         self.entry = entry
         self.title(title)
         self.geometry("580x610")
         self.resizable(False, False)
         self.transient(parent)
-        self.grab_set()
 
-        self.after(20, self._init_content)
-
-    def _init_content(self):
         self._build_ui()
-        if self.entry:
-            self._populate(self.entry)
+        if entry:
+            self._populate(entry)
         else:
             self.date_var.set(date.today().strftime("%Y-%m-%d"))
+
+        self.deiconify()
+        self.grab_set()
         self.after(100, self.title_entry.focus_set)
 
     def _build_ui(self):

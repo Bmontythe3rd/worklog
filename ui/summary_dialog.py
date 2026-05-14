@@ -8,6 +8,7 @@ import ai_summary
 class SummaryDialog(ctk.CTkToplevel):
     def __init__(self, parent, entries, mode="period", start_date=None, end_date=None):
         super().__init__(parent)
+        self.withdraw()
         self._mode = mode
         self._entries = entries
         self._streaming = False
@@ -16,11 +17,10 @@ class SummaryDialog(ctk.CTkToplevel):
         self.title(title)
         self.geometry("860x700")
         self.transient(parent)
-        self.grab_set()
 
-        self._start_date = start_date
-        self._end_date = end_date
-        self.after(20, lambda: self._build_ui(self._start_date, self._end_date))
+        self._build_ui(start_date, end_date)
+        self.deiconify()
+        self.grab_set()
 
     def _build_ui(self, start_date, end_date):
         outer = ctk.CTkFrame(self, fg_color="transparent")

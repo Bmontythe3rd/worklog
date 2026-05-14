@@ -13,12 +13,14 @@ class EntryForm(ctk.CTkToplevel):
         self.transient(parent)
         self.grab_set()
 
+        self.after(20, self._init_content)
+
+    def _init_content(self):
         self._build_ui()
-        if entry:
-            self._populate(entry)
+        if self.entry:
+            self._populate(self.entry)
         else:
             self.date_var.set(date.today().strftime("%Y-%m-%d"))
-
         self.after(100, self.title_entry.focus_set)
 
     def _build_ui(self):

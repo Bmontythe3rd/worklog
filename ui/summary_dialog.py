@@ -18,7 +18,9 @@ class SummaryDialog(ctk.CTkToplevel):
         self.transient(parent)
         self.grab_set()
 
-        self._build_ui(start_date, end_date)
+        self._start_date = start_date
+        self._end_date = end_date
+        self.after(20, lambda: self._build_ui(self._start_date, self._end_date))
 
     def _build_ui(self, start_date, end_date):
         outer = ctk.CTkFrame(self, fg_color="transparent")

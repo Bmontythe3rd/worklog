@@ -45,8 +45,8 @@ def stream_summary(entries, prompt: str) -> Generator[str, None, None]:
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
         raise RuntimeError(
-            "ANTHROPIC_API_KEY environment variable is not set.\n"
-            "Export it before launching the app:\n  export ANTHROPIC_API_KEY=sk-ant-..."
+            "No API key configured.\n"
+            "Open Settings (⚙) and enter your Anthropic API key."
         )
 
     client = anthropic.Anthropic(api_key=api_key)

@@ -8,6 +8,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 import customtkinter as ctk
+import config
 import database
 from ui.app import WorklogApp
 
@@ -19,15 +20,16 @@ def _apply_hidpi_scaling():
         ctk.set_window_scaling(scale)
 
 
+def _load_api_key():
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        stored = config.get_api_key()
+        if stored:
+            os.environ["ANTHROPIC_API_KEY"] = stored
+
+
 def main():
     _apply_hidpi_scaling()
-
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        print(
-            "Warning: ANTHROPIC_API_KEY is not set.\n"
-            "The app will open, but AI summarization will not work until you set it:\n"
-            "  export ANTHROPIC_API_KEY=sk-ant-...\n"
-        )
+    _load_api_key()
 
     database.init_db()
     app = WorklogApp()

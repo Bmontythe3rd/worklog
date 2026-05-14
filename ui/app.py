@@ -2,7 +2,7 @@ from tkinter import messagebox
 import customtkinter as ctk
 from datetime import datetime
 import database
-from ui import entry_form, summary_dialog
+from ui import entry_form, summary_dialog, settings_dialog
 
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
@@ -94,6 +94,7 @@ class WorklogApp(ctk.CTk):
         ctk.CTkButton(right, text="+ New Entry", width=120, height=36, command=self._new_entry).pack(side="right", padx=4)
         ctk.CTkButton(right, text="Annual Review", width=130, height=36, fg_color="transparent", border_width=2, command=self._annual_review).pack(side="right", padx=4)
         ctk.CTkButton(right, text="Summarize Period", width=150, height=36, fg_color="transparent", border_width=2, command=self._summarize_period).pack(side="right", padx=4)
+        ctk.CTkButton(right, text="⚙ Settings", width=110, height=36, fg_color="transparent", border_width=2, command=self._open_settings).pack(side="right", padx=4)
 
     def _build_left(self, parent):
         panel = ctk.CTkFrame(parent, width=340, corner_radius=0, fg_color=("gray91", "gray13"))
@@ -301,6 +302,10 @@ class WorklogApp(ctk.CTk):
 
     def _annual_review(self):
         dlg = summary_dialog.SummaryDialog(self, entries=None, mode="annual")
+        self.wait_window(dlg)
+
+    def _open_settings(self):
+        dlg = settings_dialog.SettingsDialog(self)
         self.wait_window(dlg)
 
     def _clear_filter(self):
